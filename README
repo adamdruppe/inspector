@@ -1,0 +1,95 @@
+Overview
+================
+
+This is a web API inspector and generic interactive client - it is
+kinda like a browser and script interpreter driven by user line input
+and displaying technical results instead of rendering HTML.
+
+It can also be used to browse or modify a JSON file interactively,
+with some pretty printing.
+
+
+Building
+=================
+
+Copy this repo to your computer. Fetch script.d, jsvar.d, http2.d,
+terminal.d from my other repo: https://github.com/adamdruppe/arsd
+
+And then just compile all files at once with dmd:
+
+$ dmd inspect.d script.d jsvar.d http2.d terminal.d
+
+It should all just work.
+
+The Makefile in here just does that, assuming the folder names I
+use on my computer.
+
+Tip: the provided Makefile should also just work (at least on Linux)
+if you copy my other repo to a folder called "arsd" in your home
+directory.
+
+Using
+==================
+
+The command line inside the program interprets a line of a
+Javascript-like language. Each line is typically a function
+call or variable assignment.
+
+The result of each interpreted line is displayed in the
+inspection area of the window. Clicking on various components
+will load them up in the command line for easy reference.
+
+Loading and saving json files:
+
+	var obj = loadJsonFile("filename.json");
+	/* obj will now be displayed in the inspection area */
+	/* ... */
+	/* do whatever with obj here */
+	/* ... */
+	saveJsonFile("filename.json", obj);
+
+Browsing a web API:
+
+	var r = get("http://example.com/something");
+	/* see the response in r */
+	var r = get("another-page"); // relative urls work too
+
+Bugs and quirks
+==================
+
+Probably a lot, this is my first real use of http2.d and the line getter
+is pretty new too. The script engine is kinda sloppy as well.
+
+Among the bugs/quirks you can expect to hit are:
+
+	* the script language requires you to declare variables
+	  so remember to use the var keyword if you are setting one.
+
+	* the script parser doesn't like literals at the front of a line.
+	  you can just assign them to a variable or use functions.
+
+	* manipulating the inspectionStack from inside the script is
+	  possible, but those commands go on it too, so you probably won't
+	  get what you expect.
+
+Code commentary
+==================
+
+It is a practical example of using terminal.d, http2.d, and script.d
+from my arsd repo to make an interactive, scriptable program with web
+support. It has no dependencies outside of my code and works cross-platform.
+
+While writing this, even I was amazed with how cool D can be. I wrote:
+
+	globals["get"] = delegate var(string path) {
+		auto request = client.navigateTo(Uri(path));
+		request.send();
+		return var(request.waitForCompletion());
+	};
+
+to add the HTTP support.... and it just worked in the script engine. The
+HTTP response was correctly assimilated automatically. I was honestly
+expecting at least some pushback, but it all worked.
+
+script.d has got to be one of the easiest embeddable scripting engines out
+there!
