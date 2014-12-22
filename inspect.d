@@ -1,3 +1,10 @@
+/**
+	This is an interactive json inspector program.
+
+	By Adam D. Ruppe, December 22, 2014.
+*/
+
+
 import terminal;
 
 import arsd.script;
@@ -8,7 +15,33 @@ import std.stdio;
 string lastLine;
 HttpClient client;
 
-void main() {
+var makeClientProxy() {
+	auto client = .client;
+	var obj = var.emptyObject;
+
+	obj.authorization._object = new PropertyPrototype(
+		() => var(client.authorization),
+		(var t) {client.authorization = t.toString(); });
+	obj.userAgent._object = new PropertyPrototype(
+		() => var(client.userAgent),
+		(var t) {client.userAgent = t.toString(); });
+
+	return obj;
+}
+
+/**
+	Arguments:
+
+		a .json file will be loaded into the buffer and the variable "obj" if given
+		a URL will be loaded into the buffer and the variable "response" if given
+
+		If you give multiple .json files or urls, it will do them all, but only the last
+		one will actually be displayed and loaded in the variable (since it overwrites the
+		last ones)
+
+		any .js file given will be interpreted automatically at startup if given.
+*/
+void main(string[] args) {
 	auto terminal = Terminal(ConsoleOutputType.cellular);
 	auto input = RealTimeConsoleInput(&terminal, ConsoleInputFlags.raw | ConsoleInputFlags.allInputEvents);
 
@@ -70,29 +103,70 @@ void main() {
 		return obj;
 	};
 
-	globals["get"] = delegate var(string path) {
-		auto request = client.navigateTo(Uri(path));
-		request.send();
-		return var(request.waitForCompletion());
-	};
+	globals["httpClient"] = makeClientProxy;
+
+	var delegate(string, var) httpRequestFactory(HttpVerb method) {
+		return delegate var(string path, var data) {
+			auto request = client.navigateTo(Uri(path), method);
+			if(data) {
+				auto send = data.toJson();
+				request.requestParameters.bodyData = cast(ubyte[]) send;
+				request.requestParameters.headers ~= "Content-Type: application/json";
+			}
+			request.send();
+			return var(request.waitForCompletion());
+		};
+	}
+
+	globals["get"] = httpRequestFactory(HttpVerb.GET);
+	globals["post"] = httpRequestFactory(HttpVerb.POST);
+	globals["put"] = httpRequestFactory(HttpVerb.PUT);
+	globals["patch"] = httpRequestFactory(HttpVerb.PATCH);
+	globals["delete"] = httpRequestFactory(HttpVerb.DELETE);
+
+	void executeLine(string line) {
+		try {
+			drawInspectionWindow(&terminal, globals.pushInspection()(interpret(line, globals)));
+		} catch(Exception e) {
+			drawInspectionWindow(&terminal, var(e.msg));
+		}
+		terminal.moveTo(0, terminal.height - 1);
+		lineGetter.startGettingLine();
+	}
 
 	void handleEvent(InputEvent event) {
 		switch(event.type) {
+			case InputEvent.Type.CharacterEvent:
+				auto ev = event.get!(InputEvent.Type.CharacterEvent);
+				if(ev.character == ('x' - 'a' + 1)) {
+					// ctrl+x is a shortcut to open a json literal in the script lang
+					lineGetter.addString("json!q{");
+					lineGetter.redraw();
+					break;
+				}
 			default:
 				try
 				if(!lineGetter.workOnLine(event)) {
 					auto line = lineGetter.finishGettingLine();
 					lastLine = line;
-					try {
-						drawInspectionWindow(&terminal, globals.pushInspection()(interpret(line, globals)));
-					} catch(Exception e) {
-						drawInspectionWindow(&terminal, var(e.toString()));
-					}
-					terminal.moveTo(0, terminal.height - 1);
-					lineGetter.startGettingLine();
+					line ~= ";"; // just so you don't have to always do it yourself
+
+					executeLine(line);
 				}
 				catch(Exception e)
 					running = false;
+		}
+	}
+
+	foreach(arg; args[1 .. $]) {
+		import std.algorithm;
+		if(endsWith(arg, ".js")) {
+			import std.file;
+			interpret(readText(arg), globals);
+		} else if(endsWith(arg, ".json")) {
+			executeLine("loadJsonFile("~var(arg).toJson()~");");
+		} else if(startsWith(arg, "http://")) {
+			executeLine("get("~var(arg).toJson()~");");
 		}
 	}
 

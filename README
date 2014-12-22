@@ -9,6 +9,13 @@ It can also be used to browse or modify a JSON file interactively,
 with some pretty printing.
 
 
+	TODO:
+		* mouse support isn't written yet
+		* the auto-complete could be better
+		* loading an external editor on an item would be nice
+		* colors, back button, etc. UI stuff.
+		* ctrl+d should exit.
+
 Building
 =================
 
@@ -39,6 +46,10 @@ The result of each interpreted line is displayed in the
 inspection area of the window. Clicking on various components
 will load them up in the command line for easy reference.
 
+Exiting the program:
+
+	Press ctrl+c to exit.
+
 Loading and saving json files:
 
 	var obj = loadJsonFile("filename.json");
@@ -53,6 +64,36 @@ Browsing a web API:
 	var r = get("http://example.com/something");
 	/* see the response in r */
 	var r = get("another-page"); // relative urls work too
+
+
+	There's functions for the HTTP methods get, post, delete,
+	patch, and put. You can pass arguments to them with the
+	second parameter.
+
+	The returned value from the HTTP methods
+
+Customizing the HTTP client:
+
+	The http client is available to the script as the global
+	variable httpClient. You can inspect and modify its
+	properties just like any other object.
+
+Loading initial data:
+
+	You can pass command line arguments to the inspect program.
+
+	If you pass a http:// url, it will load that site into the
+	buffer just as if you manually ran get(that_url);
+
+	If you pass a .json filename, it will load that file into
+	the buffer, as if you manually ran loadJsonFile(that_file);
+
+	If you pass a .js filename, it will load and execute that
+	file at startup before presenting the command line.
+
+Tip: if you have settings you use a lot, put them in a .js file
+and load it in the command line argument list to initialize
+your session the way you like it.
 
 Bugs and quirks
 ==================
@@ -71,6 +112,13 @@ Among the bugs/quirks you can expect to hit are:
 	* manipulating the inspectionStack from inside the script is
 	  possible, but those commands go on it too, so you probably won't
 	  get what you expect.
+
+	* My script language does NOT support json literals like in Javascript.
+	  Instead of { members }, it uses json!q{ members }. Since this is a pain
+	  to type, I set up a hotkey to insert it automatically: ctrl+x.
+
+	* My script language does also NOT support single quote literals. You MUST
+	  use double-quoted string literals.
 
 Code commentary
 ==================
@@ -93,3 +141,10 @@ expecting at least some pushback, but it all worked.
 
 script.d has got to be one of the easiest embeddable scripting engines out
 there!
+
+About
+==============
+
+I (Adam D. Ruppe) started writing this on December 22, 2014. If you
+have questions or comments about it it, feel free to email me:
+destructionator@gmail.com.
