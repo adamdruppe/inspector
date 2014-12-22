@@ -103,6 +103,10 @@ void main(string[] args) {
 		return obj;
 	};
 
+	globals.exit = delegate() {
+		running = false;
+	};
+
 	globals["httpClient"] = makeClientProxy;
 
 	var delegate(string, var) httpRequestFactory(HttpVerb method) {

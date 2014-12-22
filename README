@@ -48,7 +48,8 @@ will load them up in the command line for easy reference.
 
 Exiting the program:
 
-	Press ctrl+c to exit.
+	Press ctrl+c to exit, or call the exit(); function
+	from the script command line.
 
 Loading and saving json files:
 
@@ -114,11 +115,11 @@ Among the bugs/quirks you can expect to hit are:
 	  get what you expect.
 
 	* My script language does NOT support json literals like in Javascript.
-	  Instead of { members }, it uses json!q{ members }. Since this is a pain
-	  to type, I set up a hotkey to insert it automatically: ctrl+x.
+	  Instead of { members }, it uses json!q{ members }. Since this is a
+	  pain to type, I set up a hotkey to insert it automatically: ctrl+x.
 
-	* My script language does also NOT support single quote literals. You MUST
-	  use double-quoted string literals.
+	* My script language does also NOT support single quote literals. You
+	  MUST use double-quoted string literals.
 
 Code commentary
 ==================
