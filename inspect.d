@@ -59,6 +59,17 @@ void main() {
 		return i;
 	};
 
+	globals.loadJsonFile = delegate var(string name) {
+		import std.file;
+		return var.fromJson(readText(name));
+	};
+
+	globals.saveJsonFile = delegate var(string name, var obj) {
+		import std.file;
+		write(name, obj.toJson());
+		return obj;
+	};
+
 	globals["get"] = delegate var(string path) {
 		auto request = client.navigateTo(Uri(path));
 		request.send();
