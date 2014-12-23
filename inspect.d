@@ -118,7 +118,16 @@ void main(string[] args) {
 				request.requestParameters.headers ~= "Content-Type: application/json";
 			}
 			request.send();
-			return var(request.waitForCompletion());
+			auto got = request.waitForCompletion();
+			var answer = var(got);
+
+			try {
+				answer.reply = var.fromJson(got.contentText);
+			} catch(Exception e) {
+				answer.reply = var(got.contentText);
+			}
+
+			return answer;
 		};
 	}
 
@@ -215,11 +224,21 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 			else {
 				terminal.write("{");
 				indentLevel++;
+				int count = inspecting._object._properties.length;
+				int showing = 0;
 				foreach(k, v; inspecting) {
 					indent();
 					terminal.write(k);
 					terminal.write(": ");
 					drawItem(terminal, v, indentLevel, true);
+
+					showing++;
+					if(indentLevel != 1 && showing == 3 && showing < count) {
+						indent();
+						terminal.writef(" ... %d more members ...", count - showing);
+						break;
+					}
+
 				}
 				indentLevel--;
 				indent();

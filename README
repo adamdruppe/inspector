@@ -3,18 +3,29 @@ Overview
 
 This is a web API inspector and generic interactive client - it is
 kinda like a browser and script interpreter driven by user line input
-and displaying technical results instead of rendering HTML.
+and displaying technical results instead of rendering HTML. It runs
+inside a text console and works on Windows and Linux (and probably
+Mac and BSD too).
 
 It can also be used to browse or modify a JSON file interactively,
 with some pretty printing.
 
 
 	TODO:
+		* https (will probably need a dependency :-( )
+		* maybe non-text replies.
 		* mouse support isn't written yet
 		* the auto-complete could be better
 		* loading an external editor on an item would be nice
 		* colors, back button, etc. UI stuff.
 		* ctrl+d should exit.
+		* request modification function to add other variables
+		* send as: json or form-urlencoded
+		* xml too?
+		* limit output to fit in the inspection window so it
+		  doesn't scroll the UI off screen
+
+Screenshot: http://arsdnet.net/inspect.png
 
 Building
 =================
@@ -71,7 +82,11 @@ Browsing a web API:
 	patch, and put. You can pass arguments to them with the
 	second parameter.
 
-	The returned value from the HTTP methods
+	The returned value from the HTTP methods is available in
+	a couple forms: if it returned JSON, it is parsed and put
+	into r.reply as an object. If not, r.reply contains the
+	text of the answer. r.content has an array of binary data
+	and r.contentText always has the answer as a string.
 
 Customizing the HTTP client:
 
