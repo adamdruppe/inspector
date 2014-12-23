@@ -15,6 +15,8 @@ import std.stdio;
 string lastLine;
 HttpClient client;
 
+string[128] clicks;
+
 var makeClientProxy() {
 	auto client = .client;
 	var obj = var.emptyObject;
@@ -43,6 +45,7 @@ var makeClientProxy() {
 */
 void main(string[] args) {
 	auto terminal = Terminal(ConsoleOutputType.cellular);
+	terminal.setTitle("Inspector");
 	auto input = RealTimeConsoleInput(&terminal, ConsoleInputFlags.raw | ConsoleInputFlags.allInputEvents);
 
 	auto client = new HttpClient();
@@ -50,45 +53,30 @@ void main(string[] args) {
 
 	auto lineGetter = new LineGetter(&terminal, "json-inspect");
 	scope(exit) lineGetter.dispose();
+	lineGetter.prompt = "> ";
 	terminal.moveTo(0, terminal.height - 1);
 	lineGetter.startGettingLine();
-
-	version(sample)
-	drawInspectionWindow(&terminal, json!q{
-		"test":"string!",
-		"int":100,
-		"float":1.35,
-		"array":[1,2,3],
-		"object": {
-			"str":"foo",
-			"subnumber":12,
-			"longarray": [1,2,3,4,5,6,7,8,9,1,2,3,4,5,5,6,4,23,343,234,234,23,423,3]
-		},
-		"null":null,
-		"bool1":true,
-		"bool2":false,
-		"objarr":[
-			{"id":12,"name":"twelve"},
-			{"id":12,"name":"twelve"},
-			{"id":12,"name":"twelve"}
-		],
-		"rls":"really long string that wouldn't be easy to ready becasuse it would wrap and fill up all the nonsense and hate the hatred"
-	});
 
 	bool running = true;
 
 	var globals = var.emptyObject;
 
+	int pos;
+
 	globals.inspectionStack = [];
 	globals.pushInspection = delegate var(var i) {
+		if(pos != globals.inspectionStack.length.get!int - 1)
+			globals.inspectionStack = globals.inspectionStack[0 .. pos + 1];
 		globals.inspectionStack ~= i;
 		globals.inspecting = i;
+		pos = globals.inspectionStack.length.get!int - 1;
 		return i;
 	};
 
 	globals.popInspection = delegate var() {
 		var i = globals.inspectionStack[$-1];
 		globals.inspectionStack = globals.inspectionStack[0 .. $-1];
+		pos--;
 		return i;
 	};
 
@@ -149,6 +137,40 @@ void main(string[] args) {
 
 	void handleEvent(InputEvent event) {
 		switch(event.type) {
+			case InputEvent.Type.MouseEvent:
+				auto ev = event.get!(InputEvent.Type.MouseEvent);
+				if(ev.eventType == MouseEvent.Type.Pressed) {
+					if(ev.y == 0) {
+						// clicks on the top bar
+						if(ev.x >= 0 && ev.x < 4) {
+							// back button
+							if(pos) {
+								pos--;
+								globals.inspecting = globals.inspectionStack[pos];
+								drawInspectionWindow(&terminal, globals.inspectionStack[pos]);
+							}
+							break;
+						}
+						if(ev.x >= 5 && ev.x < 5+4) {
+							// forward button
+
+							if(pos + 1 < globals.inspectionStack.length) {
+								pos++;
+								globals.inspecting = globals.inspectionStack[pos];
+								drawInspectionWindow(&terminal, globals.inspectionStack[pos]);
+							}
+							break;
+						}
+					} else {
+						if(clicks[ev.y].length)
+							executeLine("inspecting["~clicks[ev.y]~"];");
+						// click on the main window
+						break;
+					}
+
+				}
+
+				goto pass_on;
 			case InputEvent.Type.CharacterEvent:
 				auto ev = event.get!(InputEvent.Type.CharacterEvent);
 				if(ev.character == ('x' - 'a' + 1)) {
@@ -157,7 +179,9 @@ void main(string[] args) {
 					lineGetter.redraw();
 					break;
 				}
+				goto pass_on;
 			default:
+			pass_on:
 				try
 				if(!lineGetter.workOnLine(event)) {
 					auto line = lineGetter.finishGettingLine();
@@ -170,6 +194,8 @@ void main(string[] args) {
 					running = false;
 		}
 	}
+
+	executeLine(`"Inspector version 1.0";`);
 
 	foreach(arg; args[1 .. $]) {
 		import std.algorithm;
@@ -193,15 +219,17 @@ void main(string[] args) {
 void drawInspectionWindow(Terminal* terminal, var inspecting) {
 	terminal.clear();
 
-	terminal.write("[<<] [>>]  || ");
+	terminal.write("[<<] [>>] | ");
 	terminal.write(client.location);
-	terminal.write(" || ");
+	terminal.write(" | ");
 	terminal.writeln(lastLine);
 
 	foreach(i; 0 .. terminal.width)
 		terminal.write("-");
 
 	//terminal.moveTo(0, 2);
+
+	clicks[] = null;
 
 	drawItem(terminal, inspecting, 0);
 
@@ -229,6 +257,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 				foreach(k, v; inspecting) {
 					indent();
 					terminal.write(k);
+					clicks[terminal.cursorY] = "\"" ~ k.get!string ~ "\"";
 					terminal.write(": ");
 					drawItem(terminal, v, indentLevel, true);
 
@@ -257,6 +286,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 				indentLevel++;
 				foreach(idx, item; inspecting) {
 					indent();
+					import std.conv; clicks[terminal.cursorY] = to!string(idx);
 					drawItem(terminal, item, indentLevel + 1);
 				}
 				indentLevel--;
@@ -266,6 +296,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 				foreach(idx, item; inspecting) {
 					if(idx)
 						terminal.write(", ");
+					import std.conv; clicks[terminal.cursorY] = to!string(idx);
 					drawItem(terminal, item, indentLevel + 1);
 				}
 			else

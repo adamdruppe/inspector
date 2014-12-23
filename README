@@ -14,7 +14,7 @@ with some pretty printing.
 	TODO:
 		* https (will probably need a dependency :-( )
 		* maybe non-text replies.
-		* mouse support isn't written yet
+		* see the histroy easier
 		* the auto-complete could be better
 		* loading an external editor on an item would be nice
 		* colors, back button, etc. UI stuff.
@@ -87,6 +87,19 @@ Browsing a web API:
 	into r.reply as an object. If not, r.reply contains the
 	text of the answer. r.content has an array of binary data
 	and r.contentText always has the answer as a string.
+
+Navigating the data:
+
+	You can click on the line of a datum to drill down into it.
+	The [<<] button goes back. [>>] goes forward.
+
+	When a piece of data is displayed, the limits are turned
+	off. Thus, to see additional items in an object, array,
+	or string, simply click on it or evaluate it on the command
+	line.
+
+	The displayed data is available as a script variable called
+	inspecting.
 
 Customizing the HTTP client:
 
