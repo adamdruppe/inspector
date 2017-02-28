@@ -17,7 +17,7 @@ import std.stdio;
 string lastLine;
 HttpClient client;
 
-string[128] clicks;
+void delegate(string) executeLine;
 
 var makeClientProxy() {
 	auto client = .client;
@@ -371,11 +371,15 @@ void main(string[] args) {
 		try {
 			drawInspectionWindow(&terminal, globals.pushInspection()(interpret(line, globals)));
 		} catch(Exception e) {
-			drawInspectionWindow(&terminal, var(e.msg));
+			sb.addLine();
+			sb.addComponent(e.toString, Color.black, Color.red, null);
+			sb.drawInto(&terminal, 0, 2, terminal.width, terminal.height - 3);
 		}
 		terminal.moveTo(0, terminal.height - 1);
 		lineGetter.startGettingLine();
 	}
+
+	.executeLine = &executeLine;
 
 	void handleEvent(InputEvent event) {
 		switch(event.type) {
@@ -404,8 +408,7 @@ void main(string[] args) {
 							break;
 						}
 					} else {
-						if(clicks[ev.y].length)
-							executeLine("inspecting["~clicks[ev.y]~"];");
+						sb.handleEvent(event);
 						// click on the main window
 						break;
 					}
@@ -437,7 +440,7 @@ void main(string[] args) {
 		}
 	}
 
-	executeLine(`"Inspector version 1.0";`);
+	executeLine(`"Inspector version 1.1";`);
 
 	foreach(arg; args[1 .. $]) {
 		import std.algorithm;
@@ -458,6 +461,8 @@ void main(string[] args) {
 
 }
 
+ScrollbackBuffer sb;
+
 void drawInspectionWindow(Terminal* terminal, var inspecting) {
 	terminal.clear();
 
@@ -471,16 +476,18 @@ void drawInspectionWindow(Terminal* terminal, var inspecting) {
 
 	//terminal.moveTo(0, 2);
 
-	clicks[] = null;
+	//sb.clear();
+	sb.addLine();
+	drawItem(&sb, inspecting, 0);
 
-	drawItem(terminal, inspecting, 0);
+	sb.drawInto(terminal, 0, 2, terminal.width, terminal.height - 3);
 
 	terminal.flush();
 }
 
 // This pretty prints a JSON object and remembers where the items are on screen so you
 // can click on them too.
-void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = false) {
+void drawItem(ScrollbackBuffer* terminal, var inspecting, int indentLevel, bool child = false) {
 	void indent() {
 		terminal.write("\n");
 		foreach(i; 0 .. indentLevel)
@@ -498,8 +505,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 				int showing = 0;
 				foreach(k, v; inspecting) {
 					indent();
-					terminal.write(k);
-					clicks[terminal.cursorY] = "\"" ~ k.get!string ~ "\"";
+					terminal.addComponent(k.get!string, Color.DEFAULT, Color.DEFAULT, { executeLine("inspecting[\"" ~ k.get!string ~ "\"];"); return true; });
 					terminal.write(": ");
 					drawItem(terminal, v, indentLevel, true);
 
@@ -520,7 +526,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 			auto disp = inspecting.toString();
 			if(indentLevel && disp.length > 40)
 				disp = disp[0 .. 40] ~ "[...]";
-			terminal.write("\"", disp, "\"");
+			terminal.addComponent("\""~ disp~ "\"", Color.red, Color.DEFAULT, { executeLine(inspecting.toJson() ~ ";"); return true; });
 		break;
 		case var.Type.Array:
 			terminal.write("[");
@@ -528,7 +534,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 				indentLevel++;
 				foreach(idx, item; inspecting) {
 					indent();
-					import std.conv; clicks[terminal.cursorY] = to!string(idx);
+					//import std.conv; clicks[terminal.cursorY] = to!string(idx);
 					drawItem(terminal, item, indentLevel + 1);
 				}
 				indentLevel--;
@@ -538,7 +544,7 @@ void drawItem(Terminal* terminal, var inspecting, int indentLevel, bool child = 
 				foreach(idx, item; inspecting) {
 					if(idx)
 						terminal.write(", ");
-					import std.conv; clicks[terminal.cursorY] = to!string(idx);
+					//import std.conv; clicks[terminal.cursorY] = to!string(idx);
 					drawItem(terminal, item, indentLevel + 1);
 				}
 			else
