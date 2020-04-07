@@ -7,7 +7,7 @@
 */
 
 
-import terminal;
+import arsd.terminal;
 
 import arsd.script;
 import arsd.http2;
@@ -374,6 +374,7 @@ void main(string[] args) {
 			sb.addLine();
 			sb.addComponent(e.toString, Color.black, Color.red, null);
 			sb.drawInto(&terminal, 0, 2, terminal.width, terminal.height - 3);
+			redrawSb(&terminal);
 		}
 		terminal.moveTo(0, terminal.height - 1);
 		lineGetter.startGettingLine();
@@ -408,7 +409,8 @@ void main(string[] args) {
 							break;
 						}
 					} else {
-						sb.handleEvent(event);
+						if(sb.handleEvent(event))
+							redrawSb(&terminal);
 						// click on the main window
 						break;
 					}
@@ -416,15 +418,26 @@ void main(string[] args) {
 				}
 
 				goto pass_on;
-			case InputEvent.Type.CharacterEvent:
-				auto ev = event.get!(InputEvent.Type.CharacterEvent);
-				if(ev.character == ('x' - 'a' + 1)) {
-					// ctrl+x is a shortcut to open a json literal in the script lang
-					lineGetter.addString("json!q{");
-					lineGetter.redraw();
-					break;
+			case InputEvent.Type.KeyboardEvent:
+				auto ev = event.get!(InputEvent.Type.KeyboardEvent);
+				switch(ev.which) {
+					case ('x' - 'a' + 1):
+						// ctrl+x is a shortcut to open a json literal in the script lang
+						lineGetter.addString("json!q{");
+						lineGetter.redraw();
+						break;
+					case KeyboardEvent.Key.PageUp:
+						sb.scrollUp(10);
+						redrawSb(&terminal);
+						break;
+					case KeyboardEvent.Key.PageDown:
+						sb.scrollDown(10);
+						redrawSb(&terminal);
+						break;
+					default:
+						goto pass_on;
 				}
-				goto pass_on;
+				break;
 			default:
 			pass_on:
 				try
@@ -463,6 +476,10 @@ void main(string[] args) {
 
 ScrollbackBuffer sb;
 
+void redrawSb(Terminal* terminal) {
+	sb.drawInto(terminal, 0, 2, terminal.width, terminal.height - 3);
+}
+
 void drawInspectionWindow(Terminal* terminal, var inspecting) {
 	terminal.clear();
 
@@ -480,7 +497,7 @@ void drawInspectionWindow(Terminal* terminal, var inspecting) {
 	sb.addLine();
 	drawItem(&sb, inspecting, 0);
 
-	sb.drawInto(terminal, 0, 2, terminal.width, terminal.height - 3);
+	redrawSb(terminal);
 
 	terminal.flush();
 }
